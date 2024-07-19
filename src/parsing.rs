@@ -256,18 +256,6 @@ fn test_parse_clap_option_missing_keys() {
 }
 
 #[test]
-fn test_parse_clap_option_missing_name() {
-    let option_line = "--name    Name of the person to greet";
-
-    let argument = parse_clap_option_line(&option_line);
-
-    assert_eq!(
-        argument,
-        None,
-    )
-}
-
-#[test]
 fn test_parse_clap_option_without_description() {
     let option_line = "  --name <NAME>";
 

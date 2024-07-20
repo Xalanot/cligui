@@ -1,17 +1,28 @@
+use std::fmt::format;
+
 use regex::Regex;
 
+use crate::ui::GUIDisplay;
+
 #[derive(Debug, Default, PartialEq, Eq)]
-struct CLIArgument {
-    key: String,
-    name: String,
-    description: Option<String>,
-    default_value: Option<String>
+pub struct CLIArgument {
+    pub key: String,
+    pub name: String,
+    pub description: Option<String>,
+    pub default_value: Option<String>
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
-struct CLIFlag {
-    key: String,
-    description: Option<String>
+pub struct CLIFlag {
+    pub key: String,
+    pub description: Option<String>,
+    pub set: bool,
+}
+
+impl CLIFlag {
+    pub fn name(&self) -> String {
+        self.key.trim_start_matches('-').to_uppercase()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -21,10 +32,10 @@ enum CLIParameter {
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
-struct CLIParameters {
-    arguments: Vec<CLIArgument>,
-    options: Vec<CLIArgument>,
-    flags: Vec<CLIFlag>
+pub struct CLIParameters {
+    pub arguments: Vec<CLIArgument>,
+    pub options: Vec<CLIArgument>,
+    pub flags: Vec<CLIFlag>
 }
 
 /// Parses a help string from a CLI to determine the arguments and the options
@@ -98,7 +109,8 @@ fn parse_clap_option_line(option_line: &str) -> Option<CLIParameter> {
     } else {
         Some(CLIParameter::Flag(CLIFlag {
             key,
-            description
+            description,
+            set: false,
         }))
     }
 }
@@ -282,7 +294,8 @@ fn test_parse_clap_option_flag() {
         parameter,
         CLIParameter::Flag(CLIFlag {
             key: String::from("--help"),
-            description: Some(String::from("Print help"))
+            description: Some(String::from("Print help")),
+            set: false,
         })
     )
 }
@@ -297,7 +310,8 @@ fn test_parse_clap_option_flag_without_description() {
         parameter,
         CLIParameter::Flag(CLIFlag {
             key: String::from("--help"),
-            description: None
+            description: None,
+            set: false,
         })
     )
 }
@@ -324,10 +338,12 @@ fn test_parse_clap_option_explanation() {
             CLIParameter::Flag(CLIFlag {
                 key: String::from("--help"),
                 description: Some(String::from("Print help")),
+                set: false,
             }),
             CLIParameter::Flag(CLIFlag {
                 key: String::from("--version"),
                 description: Some(String::from("Print version")),
+                set: false,
             })
         ]
     )
@@ -395,10 +411,12 @@ fn parse_clap() {
             CLIFlag {
                 key: String::from("--help"),
                 description: Some(String::from("Print help")),
+                set: false,
             },
             CLIFlag {
                 key: String::from("--version"),
-                description: Some(String::from("Print version"))
+                description: Some(String::from("Print version")),
+                set: false,
             }
         ]
     });

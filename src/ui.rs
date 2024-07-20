@@ -71,7 +71,7 @@ fn render_main_border(frame: &mut Frame, title: &str) {
         " Run ".into(),
         "<Enter>".blue().into(),
         " Quit ".into(),
-        "<Strg + Q> ".blue().into(),
+        "<Ctrl + Q> ".blue().into(),
     ]));
     let block = Block::bordered()
         .title(title)

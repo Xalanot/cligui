@@ -1,15 +1,21 @@
-use std::fmt::format;
+use std::process::Command;
 
 use regex::Regex;
 
 use crate::ui::GUIDisplay;
 
 #[derive(Debug, Default, PartialEq, Eq)]
+pub enum CLILib {
+    #[default]
+    Clap,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct CLIArgument {
     pub key: String,
     pub name: String,
     pub description: Option<String>,
-    pub default_value: Option<String>
+    pub value: String
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -33,9 +39,11 @@ enum CLIParameter {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct CLIParameters {
+    pub cli_name: String,
     pub arguments: Vec<CLIArgument>,
     pub options: Vec<CLIArgument>,
-    pub flags: Vec<CLIFlag>
+    pub flags: Vec<CLIFlag>,
+    pub cli_lib: CLILib,
 }
 
 /// Parses a help string from a CLI to determine the arguments and the options
@@ -53,6 +61,7 @@ fn parse_clap_help_string(help_string: &str) -> Option<CLIParameters> {
     let usage_explanation = retrieve_clap_usage_explanation(help_string)?;
     let argument_keys = parse_clap_usage_explanation(usage_explanation);
     let mut result = CLIParameters::default();
+    result.cli_lib = CLILib::Clap;
 
     for parameter in parameters {
         match parameter {
@@ -91,20 +100,20 @@ fn retrieve_clap_usage_explanation<'a>(help_string: &'a str) -> Option<&'a str> 
 /// 1. Arguments: -n, --name <NAME> Name of the person to greet [default: Me]
 /// 2. Flags: -h, --help Print help
 fn parse_clap_option_line(option_line: &str) -> Option<CLIParameter> {
-    let re = Regex::new(r"[ ]*(?P<short_key>-\w)?[ ,]*(?P<long_key>--\w+)?\s*(<(?P<name>\w+)>)?(?P<description>[ \w]+)?(\[default: (?P<default_value>.+)\])?").ok()?;
+    let re = Regex::new(r"[ ]*(?P<short_key>-\w)?[ ,]*(?P<long_key>--\w+)?\s*(<(?P<name>\w+)>)?(?P<description>[ \w]+)?(\[default: (?P<value>.+)\])?").ok()?;
     let caps = re.captures(option_line)?;
     let key = caps.name("long_key")
         .or_else(|| caps.name("short_key"))
         .map(|k| k.as_str().to_string())?;
     let name = caps.name("name").map(|name| name.as_str().to_string());
     let description = caps.name("description").map(|description| description.as_str().trim().to_string());
-    let default_value = caps.name("default_value").map(|default_value| default_value.as_str().to_string());
+    let value = caps.name("value").map(|value| value.as_str().to_string()).unwrap_or(String::new());
     if let Some(name) = name {
         Some(CLIParameter::Argument(CLIArgument {
             key,
             name,
             description,
-            default_value
+            value,
         }))
     } else {
         Some(CLIParameter::Flag(CLIFlag {
@@ -137,6 +146,32 @@ fn parse_clap_usage_explanation(usage_string: &str) -> Vec<String> {
     key_pattern.find_iter(usage_string)
         .map(|mat| mat.as_str().to_string())
         .collect()
+}
+
+/// Convert the parameters to an actual cli command
+pub fn convert_to_cli(parameters: &CLIParameters) -> Command {
+    match  parameters.cli_lib {
+        CLILib::Clap => return convert_to_clap_cli(parameters),
+    }
+}
+
+/// Convert the parameters to clap cli command
+fn convert_to_clap_cli(parameters: &CLIParameters) -> Command {
+    let mut cli_command = Command::new(parameters.cli_name.clone());
+    for option in &parameters.options {
+        if !option.value.is_empty() {
+            cli_command.args([&option.key, &option.value]);
+        }
+    }
+    for flag in &parameters.flags {
+        if flag.set {
+            cli_command.arg(&flag.key);
+        }
+    }
+    for argument in &parameters.arguments {
+        cli_command.args([&argument.key, &argument.value]);
+    }
+    cli_command
 }
 
 // Unit tests
@@ -199,7 +234,7 @@ fn test_parse_clap_option_line() {
             name: String::from("NAME"),
             key: String::from("--name"),
             description: Some(String::from("Name of the person to greet")),
-            default_value: None
+            value: String::new(),
         }),
     )
 }
@@ -216,7 +251,7 @@ fn test_parse_clap_option_line_default_value() {
             name: String::from("COUNT"),
             key: String::from("--count"),
             description: Some(String::from("Number of times to greet")),
-            default_value: Some(String::from("10")),
+            value: String::from("10"),
         }),
     )
 }
@@ -233,7 +268,7 @@ fn test_parse_clap_option_line_only_short_key() {
             name: String::from("NAME"),
             key: String::from("-n"),
             description: Some(String::from("Name of the person to greet")),
-            default_value: None
+            value: String::new(),
         }),
     )
 }
@@ -250,7 +285,7 @@ fn test_parse_clap_option_line_only_long_key() {
             name: String::from("NAME"),
             key: String::from("--name"),
             description: Some(String::from("Name of the person to greet")),
-            default_value: None
+            value: String::new(),
         }),
     )
 }
@@ -279,7 +314,7 @@ fn test_parse_clap_option_without_description() {
             name: String::from("NAME"),
             key: String::from("--name"),
             description: None,
-            default_value: None
+            value: String::new(),
         }),
     )
 }
@@ -327,13 +362,13 @@ fn test_parse_clap_option_explanation() {
                 name: String::from("NAME"),
                 key: String::from("--name"),
                 description: Some(String::from("Name of the person to greet")),
-                default_value: None
+                value: String::new(),
             }),
             CLIParameter::Argument(CLIArgument {
                 name: String::from("COUNT"),
                 key: String::from("--count"),
                 description: Some(String::from("Number of times to greet")),
-                default_value: Some(String::from("1"))
+                value: String::from("1"),
             }),
             CLIParameter::Flag(CLIFlag {
                 key: String::from("--help"),
@@ -391,12 +426,13 @@ fn parse_clap() {
     let cli_arguments = parse_help_string(&help_string);
 
     let expected_cli_arguments = Some(CLIParameters {
+        cli_name: String::from("clap_example.exe"),
         arguments: vec![
             CLIArgument {
                 name: String::from("NAME"),
                 key: String::from("--name"),
                 description: Some(String::from("Name of the person to greet")),
-                default_value: None
+                value: String::new(),
             },
         ],
         options: vec![
@@ -404,7 +440,7 @@ fn parse_clap() {
                 name: String::from("COUNT"),
                 key: String::from("--count"),
                 description: Some(String::from("Number of times to greet")),
-                default_value: Some(String::from("1"))
+                value: String::from("1")
             }
         ],
         flags: vec![
@@ -418,7 +454,59 @@ fn parse_clap() {
                 description: Some(String::from("Print version")),
                 set: false,
             }
-        ]
+        ],
+        cli_lib: CLILib::Clap,
     });
     assert_eq!(cli_arguments, expected_cli_arguments);
+}
+
+#[test]
+fn test_convert_to_cli() {
+    let parameters = CLIParameters {
+        cli_name: String::from("greeter.exe"),
+        arguments: vec![
+            CLIArgument {
+                name: String::from("FIRST NAME"),
+                key: String::from("--first-name"),
+                description: Some(String::from("First name of the person to greet")),
+                value: String::from("Ferris"),
+            },
+            CLIArgument {
+                name: String::from("LAST NAME"),
+                key: String::from("--last-name"),
+                description: Some(String::from("Last name of the person to greet")),
+                value: String::from("the Crab"),
+            },
+        ],
+        options: vec![
+            CLIArgument {
+                name: String::from("COUNT"),
+                key: String::from("--count"),
+                description: Some(String::from("Number of times to greet")),
+                value: String::from("5")
+            }
+        ],
+        flags: vec![
+            CLIFlag {
+                key: String::from("--caps"),
+                description: Some(String::from("Greet in caps")),
+                set: true,
+            },
+            CLIFlag {
+                key: String::from("--german"),
+                description: Some(String::from("Greet in german")),
+                set: false,
+            },
+        ],
+        cli_lib: CLILib::Clap,
+    };
+
+    let cli_command = convert_to_cli(&parameters);
+
+    let mut expected_cli_command = Command::new("greeter.exe");
+    expected_cli_command.args(["--count", "5", "--caps", "--first-name", "Ferris", "--last-name", "the Crab"]);
+    assert_eq!(
+        format!("{:?}", cli_command),
+        format!("{:?}", expected_cli_command),
+    )
 }

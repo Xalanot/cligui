@@ -1,6 +1,6 @@
 use crate::parsing::CLIParameters;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Section {
     Arguments,
     Flags,
@@ -9,22 +9,22 @@ pub enum Section {
 
 #[derive(Debug)]
 pub struct Model {
-    pub title: String,
     pub parameters: CLIParameters,
     pub current_section: Section,
-    pub current_key_index: usize, // Use an index instead of a direct reference
+    pub current_key_index: usize,
+    pub run: bool,
     pub exit: bool,
 }
 
 use crate::ui::GUIDisplay;
 
 impl Model {
-    pub fn new(title: impl Into<String>, parameters: CLIParameters) -> Self {
+    pub fn new(parameters: CLIParameters) -> Self {
         Self {
-            title: title.into(),
             parameters,
             current_section: Section::Arguments,
             current_key_index: 0,
+            run: false,
             exit: false,
         }
     }
@@ -44,4 +44,20 @@ impl Model {
             return None;
         }
     }
+
+    pub fn get_selected_parameter_len(&self) -> usize {
+        match self.current_section {
+            Section::Arguments => return self.parameters.arguments.len(),
+            Section::Flags => return self.parameters.flags.len(),
+            Section::Options => return self.parameters.options.len(),
+        }
+    }
+
+    pub fn section_is_available(&self, section: Section) -> bool {
+        match section {
+            Section::Arguments => return !self.parameters.arguments.is_empty(),
+            Section::Flags => return !self.parameters.flags.is_empty(),
+            Section::Options => return !self.parameters.options.is_empty(),
+        }
+    } 
 }

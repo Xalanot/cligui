@@ -28,7 +28,7 @@ pub trait GUIDisplay {
 
 impl GUIDisplay for CLIArgument {
     fn display_list(&self) -> String {
-        format!("{}: {}", self.name, self.default_value.as_deref().unwrap_or(""))
+        format!("{}: {}", self.name, self.value)
     }
 
     fn display_description(&self) -> Option<String> {
@@ -70,6 +70,8 @@ fn render_main_border(frame: &mut Frame, title: &str) {
     let instructions = Title::from(Line::from(vec![
         " Run ".into(),
         "<Enter>".blue().into(),
+        " Toggle ".into(),
+        "<Space>".blue().into(),
         " Quit ".into(),
         "<Ctrl + Q> ".blue().into(),
     ]));
@@ -115,6 +117,7 @@ pub fn render_frame(frame: &mut Frame, model: &Model) {
     render_layout(frame, &layout);
     render_parameters_section(frame, &model.parameters.arguments, model.get_selected_index(Section::Arguments), "Arguments", layout.argument_section);
     render_parameters_section(frame, &model.parameters.flags, model.get_selected_index(Section::Flags), "Flags", layout.flag_section);
+    render_parameters_section(frame, &model.parameters.options, model.get_selected_index(Section::Options), "Options", layout.option_section);
     render_description(frame, model, layout.description_section);
-    render_main_border(frame, &model.title);
+    render_main_border(frame, &model.parameters.cli_name);
 }

@@ -33,7 +33,7 @@ impl Model {
         match self.current_section {
             Section::Arguments => return self.parameters.arguments[self.current_key_index].display_description(),
             Section::Flags => return self.parameters.flags[self.current_key_index].display_description(),
-            Section::Options => return self.parameters.flags[self.current_key_index].display_description(),
+            Section::Options => return self.parameters.options[self.current_key_index].display_description(),
         }
     }
 

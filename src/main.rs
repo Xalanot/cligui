@@ -30,6 +30,7 @@ fn main() -> io::Result<()> {
     // run actual cli
     ui::restore()?;
     if let Some(cli_command) = cli_command {
+        println!("Call command: {:?}", cli_command);
         cli::run_external_command(cli_command)?;
     }
     Ok(())

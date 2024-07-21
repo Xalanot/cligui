@@ -2,6 +2,9 @@
 name = "clitui"
 version = "0.1.0"
 edition = "2021"
+description = "A tui for your cli tools."
+license = "GNU"
+homepage = "https://github.com/Xalanot/clitui"
 
 [dependencies]
 ratatui = "0.27.0"

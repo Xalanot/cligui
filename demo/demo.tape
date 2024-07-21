@@ -16,7 +16,7 @@ Type "clear"
 Sleep 1s
 Enter
 
-Type "cligui.exe greeter.exe"
+Type "clitui.exe greeter.exe"
 Sleep 1s
 Enter
 Sleep 2s
